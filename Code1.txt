@@ -1,0 +1,422 @@
+import pygame
+import sys
+import math
+try:
+    import imageio
+    imageio_available = True
+except ImportError:
+    imageio_available = False
+
+# Initialize Pygame
+pygame.init()
+
+# Screen settings
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Tai Chi & Qigong Demonstrator with Shifu Avatar")
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GRAY = (200, 200, 200)
+BLUE = (0, 0, 255)
+SKIN = (245, 200, 150)
+NAVY = (0, 0, 100)
+GRAY_ROBE = (100, 100, 100)
+
+# Fonts
+font_title = pygame.font.SysFont(None, 48)
+font_button = pygame.font.SysFont(None, 36)
+font_text = pygame.font.SysFont(None, 24)
+
+# Full data for sections
+tai_chi_forms = [
+    {"name": "1. Preparation", "desc": "Stand with feet together, arms at sides, relax and focus on breathing."},
+    {"name": "2. Beginning", "desc": "Raise arms forward and up, then lower them while stepping into a stance."},
+    {"name": "3. Ward Off, Left", "desc": "Shift weight left, circle left arm to ward off."},
+    {"name": "4. Ward Off, Right", "desc": "Similar to left, but on the right side."},
+    {"name": "5. Roll Back", "desc": "Draw energy back with arms while shifting weight."},
+    {"name": "6. Press", "desc": "Press forward with both hands from the chest."},
+    {"name": "7. Push", "desc": "Extend arms forward in a pushing motion."},
+    {"name": "8. Single Whip", "desc": "Extend one arm out, hook the hand, shift into a wide stance."},
+    {"name": "9. White Crane Spreading Wings", "desc": "Raise one arm high, lower the other, like wings opening."},
+    {"name": "10. Brush Knee and Twist Step", "desc": "Brush knee with one hand while stepping and pushing with the other."},
+    {"name": "11. Single Whip", "desc": "Repeat the single whip motion."},
+    {"name": "12. Fist Under Elbow", "desc": "Position fist under elbow in a defensive stance."},
+    {"name": "13. Repulse Monkey", "desc": "Step back while waving arms to 'repulse'."},
+    {"name": "14. Slanting Flying", "desc": "Diagonal arm sweep while stepping."},
+    {"name": "15. Cloud Hands", "desc": "Wave hands like clouds in a circular motion."},
+    {"name": "16. Snake Creeps Down", "desc": "Squat low, extend one leg, arms flowing down."},
+    {"name": "17. Golden Rooster Stands on One Leg", "desc": "Balance on one leg, raise knee and arm."},
+    {"name": "18. Kick with Heel", "desc": "Extend heel kick forward."},
+    {"name": "19. Punch Ears with Both Fists", "desc": "Double fist strike to imaginary ears."},
+    {"name": "20. Cannon Fist", "desc": "Explosive punch with fajin (bursting energy)."},
+    {"name": "21. Closing", "desc": "Bring feet together, lower arms, return to preparation."}
+]
+
+eight_brocades = [
+    {"name": "1. Pressing Up to the Heavens with Two Hands", "desc": "Stand with feet shoulder-width. Interlace fingers, palms up, raise arms overhead while inhaling, press up as if lifting the sky. Lower while exhaling. Regulates the Triple Warmer and balances energy."},
+    {"name": "2. Drawing the Bow and Letting the Arrow Fly", "desc": "In horse stance, mimic drawing a bow left and right—extend one arm forward (arrow), pull the other back (bow). Strengthens kidneys, lower body, back, hips, legs, knees, and ankles."},
+    {"name": "3. Separating Heaven and Earth", "desc": "Raise one hand overhead (palm up), press the other down (palm down), then switch. Stimulates stomach, eases liver and spleen, opens chest for deeper breathing."},
+    {"name": "4. Wise Owl Gazes Backward", "desc": "Gently turn head left and right, looking over shoulder. Releases neck and eye tension, heals internal injuries, nourishes organs, improves vitality, and relieves back pain."},
+    {"name": "5. Big Bear Turns from Side to Side", "desc": "In low horse stance, hands on thighs, twist waist to glance back left and right. Regulates heart and lungs, removes excess heat, increases life force and energy."},
+    {"name": "6. Punching with an Angry Gaze", "desc": "In horse stance, punch forward alternately with fierce eyes. Strengthens and revitalizes the liver, builds courage and fortitude."},
+    {"name": "7. Touching the Toes then Bending Backward", "desc": "Bend forward to touch toes, then arch back with hands on lower back. Stimulates yin meridians and governing vessel, stretches spine, strengthens back muscles, improves blood flow to brain."},
+    {"name": "8. Shaking the Body", "desc": "Bounce on toes, shaking body gently. Draws earth energy through feet, enhances balance and stability."}
+]
+
+animal_frolics = [
+    {"name": "Tiger - Raising Paw", "desc": "Spread fingers, raise palms up (inhale), lower (exhale). Expand chest up, contract down. Eyes follow hands. Builds finger strength and coordinates breathing."},
+    {"name": "Tiger - Seizing Prey", "desc": "Extend arms forward, spine straight. Seize on empty stance, use Qi from Dantian to fingertips. Adjust depth for comfort."},
+    {"name": "Deer - Colliding", "desc": "Rotate waist fully, stretch convex side. Heel firm on ground for rotation. Inhale raising hands, exhale rotating. Strengthens waist, nourishes kidneys."},
+    {"name": "Deer - Running", "desc": "Shift weight back with internal force, extend arms to bow stance. Inhale stepping forward, exhale forming bow. Improves Qi circulation in spine."},
+    {"name": "Bear - Rotating Waist", "desc": "Lift waist/abdomen up (inhale), drop down (exhale). Prevents lumbar strains, improves stomach/spleen function, massages digestive system for indigestion relief."},
+    {"name": "Bear - Swaying", "desc": "Contract lateral muscles to lift leg, drop heavily for tremor to hips. Strengthens hips/lower limbs, improves balance."},
+    {"name": "Crane - Stretching", "desc": "Contract neck/shoulders/hips stretching arms out, relax lowering. Protrude chest in backward bow. Improves lung capacity, alleviates bronchitis symptoms, stimulates meridians."},
+    {"name": "Crane - Flying", "desc": "Expand chest stretching arms. Inhale raising, exhale lowering. Promotes respiration, massages heart/lungs, improves blood oxygenation."}
+]
+
+# Example keyframes for all (angles in degrees: 0 down, 90 forward, 180 up; negative for left/back)
+# Each list has 2-3 keyframes for looping animation
+tai_chi_keyframes = [
+    [  # 1. Preparation: Relaxed stand with slight breathe
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': -5, 'right_arm_angle': 5, 'left_leg_angle': -3, 'right_leg_angle': 3}
+    ],
+    [  # 2. Beginning: Raise and lower arms, step
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 90, 'left_leg_angle': -20, 'right_leg_angle': 20},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': 45, 'left_leg_angle': -10, 'right_leg_angle': 10}
+    ],
+    [  # 3. Ward Off Left: Circle left arm
+        {'head_x': 0, 'head_y': -100, 'body_end_x': -10, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': 0, 'left_leg_angle': -30, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': -10, 'body_end_y': 0, 'left_arm_angle': 135, 'right_arm_angle': 0, 'left_leg_angle': -30, 'right_leg_angle': 0}
+    ],
+    [  # 4. Ward Off Right: Circle right arm
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 10, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 45, 'left_leg_angle': 0, 'right_leg_angle': 30},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 10, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 135, 'left_leg_angle': 0, 'right_leg_angle': 30}
+    ],
+    [  # 5. Roll Back: Draw back
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 90, 'left_leg_angle': -10, 'right_leg_angle': 10},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': -45, 'right_arm_angle': -45, 'left_leg_angle': 10, 'right_leg_angle': -10}
+    ],
+    [  # 6. Press: Forward press
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': 45, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 90, 'left_leg_angle': -20, 'right_leg_angle': 20}
+    ],
+    [  # 7. Push: Extend push
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 90, 'left_leg_angle': -20, 'right_leg_angle': 20},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 120, 'right_arm_angle': 120, 'left_leg_angle': -30, 'right_leg_angle': 30}
+    ],
+    [  # 8. Single Whip: Extend arm, hook
+        {'head_x': 0, 'head_y': -100, 'body_end_x': -20, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': -45, 'left_leg_angle': -40, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': -20, 'body_end_y': 0, 'left_arm_angle': 135, 'right_arm_angle': -45, 'left_leg_angle': -40, 'right_leg_angle': 0}
+    ],
+    [  # 9. White Crane: Arms like wings
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 180, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 30},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 135, 'right_arm_angle': -45, 'left_leg_angle': 0, 'right_leg_angle': 30}
+    ],
+    [  # 10. Brush Knee: Brush and push
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 10, 'body_end_y': 0, 'left_arm_angle': -45, 'right_arm_angle': 90, 'left_leg_angle': 0, 'right_leg_angle': 40},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 10, 'body_end_y': 0, 'left_arm_angle': -90, 'right_arm_angle': 120, 'left_leg_angle': 0, 'right_leg_angle': 40}
+    ],
+    [  # 11. Single Whip (repeat)
+        {'head_x': 0, 'head_y': -100, 'body_end_x': -20, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': -45, 'left_leg_angle': -40, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': -20, 'body_end_y': 0, 'left_arm_angle': 135, 'right_arm_angle': -45, 'left_leg_angle': -40, 'right_leg_angle': 0}
+    ],
+    [  # 12. Fist Under Elbow: Defensive pose
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': -90, 'left_leg_angle': -20, 'right_leg_angle': 20},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': -90, 'left_leg_angle': -20, 'right_leg_angle': 20}
+    ],
+    [  # 13. Repulse Monkey: Wave back
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 135, 'right_arm_angle': 45, 'left_leg_angle': 30, 'right_leg_angle': -30},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 0, 'left_leg_angle': 30, 'right_leg_angle': -30}
+    ],
+    [  # 14. Slanting Flying: Diagonal sweep
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 20, 'body_end_y': 0, 'left_arm_angle': 135, 'right_arm_angle': -45, 'left_leg_angle': -10, 'right_leg_angle': 40},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 20, 'body_end_y': 0, 'left_arm_angle': 180, 'right_arm_angle': -90, 'left_leg_angle': -10, 'right_leg_angle': 40}
+    ],
+    [  # 15. Cloud Hands: Circular wave
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 90, 'left_leg_angle': -20, 'right_leg_angle': 20},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': 135, 'left_leg_angle': -20, 'right_leg_angle': 20},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 135, 'right_arm_angle': 45, 'left_leg_angle': -20, 'right_leg_angle': 20}
+    ],
+    [  # 16. Snake Creeps Down: Squat low
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -120, 'body_end_x': 0, 'body_end_y': 20, 'left_arm_angle': -45, 'right_arm_angle': -45, 'left_leg_angle': -60, 'right_leg_angle': 60}
+    ],
+    [  # 17. Golden Rooster: One leg balance
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 180, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 90},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 135, 'right_arm_angle': 45, 'left_leg_angle': 0, 'right_leg_angle': 90}
+    ],
+    [  # 18. Kick with Heel: Extend kick
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': -45, 'right_arm_angle': -45, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': 45, 'left_leg_angle': 0, 'right_leg_angle': 90}
+    ],
+    [  # 19. Punch Ears: Double fist
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 90, 'left_leg_angle': -20, 'right_leg_angle': 20},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 135, 'right_arm_angle': 135, 'left_leg_angle': -20, 'right_leg_angle': 20}
+    ],
+    [  # 20. Cannon Fist: Explosive punch
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': 0, 'left_leg_angle': -30, 'right_leg_angle': 30},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 0, 'left_leg_angle': -30, 'right_leg_angle': 30}
+    ],
+    [  # 21. Closing: Return to start
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': 45, 'left_leg_angle': -10, 'right_leg_angle': 10},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0}
+    ]
+]
+
+eight_brocades_keyframes = [
+    [  # 1. Pressing Up: Raise arms overhead
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 180, 'right_arm_angle': 180, 'left_leg_angle': 0, 'right_leg_angle': 0}
+    ],
+    [  # 2. Drawing Bow: Pull and release
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': -90, 'right_arm_angle': 90, 'left_leg_angle': -30, 'right_leg_angle': 30},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': -135, 'right_arm_angle': 135, 'left_leg_angle': -30, 'right_leg_angle': 30}
+    ],
+    [  # 3. Separating Heaven/Earth: One up, one down
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 180, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 180, 'left_leg_angle': 0, 'right_leg_angle': 0}
+    ],
+    [  # 4. Owl Gaze: Head turn
+        {'head_x': -20, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 20, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0}
+    ],
+    [  # 5. Bear Turn: Waist twist
+        {'head_x': -20, 'head_y': -100, 'body_end_x': -20, 'body_end_y': 0, 'left_arm_angle': -45, 'right_arm_angle': -45, 'left_leg_angle': -30, 'right_leg_angle': 30},
+        {'head_x': 20, 'head_y': -100, 'body_end_x': 20, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': 45, 'left_leg_angle': 30, 'right_leg_angle': -30}
+    ],
+    [  # 6. Punching: Alternate punches
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 45, 'left_leg_angle': -20, 'right_leg_angle': 20},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': 90, 'left_leg_angle': 20, 'right_leg_angle': -20}
+    ],
+    [  # 7. Touch Toes/Bend Back: Forward and back bend
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -120, 'body_end_x': 0, 'body_end_y': 20, 'left_arm_angle': -90, 'right_arm_angle': -90, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -80, 'body_end_x': 0, 'body_end_y': -20, 'left_arm_angle': 180, 'right_arm_angle': 180, 'left_leg_angle': 0, 'right_leg_angle': 0}
+    ],
+    [  # 8. Shaking: Gentle bounce
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -105, 'body_end_x': 0, 'body_end_y': 5, 'left_arm_angle': -5, 'right_arm_angle': 5, 'left_leg_angle': -5, 'right_leg_angle': 5}
+    ]
+]
+
+animal_frolics_keyframes = [
+    [  # Tiger Raising Paw: Raise palms
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 90, 'left_leg_angle': 0, 'right_leg_angle': 0}
+    ],
+    [  # Tiger Seizing: Extend forward
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': 45, 'left_leg_angle': -20, 'right_leg_angle': 20},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 90, 'left_leg_angle': -40, 'right_leg_angle': 40}
+    ],
+    [  # Deer Colliding: Waist rotate
+        {'head_x': -20, 'head_y': -100, 'body_end_x': -20, 'body_end_y': 0, 'left_arm_angle': -45, 'right_arm_angle': 45, 'left_leg_angle': -30, 'right_leg_angle': 30},
+        {'head_x': 20, 'head_y': -100, 'body_end_x': 20, 'body_end_y': 0, 'left_arm_angle': 45, 'right_arm_angle': -45, 'left_leg_angle': 30, 'right_leg_angle': -30}
+    ],
+    [  # Deer Running: Shift and extend
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 90, 'left_leg_angle': -30, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 135, 'right_arm_angle': 135, 'left_leg_angle': -60, 'right_leg_angle': 0}
+    ],
+    [  # Bear Rotating: Lift and drop waist
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': -45, 'right_arm_angle': -45, 'left_leg_angle': -20, 'right_leg_angle': 20},
+        {'head_x': 0, 'head_y': -105, 'body_end_x': 0, 'body_end_y': 5, 'left_arm_angle': -90, 'right_arm_angle': -90, 'left_leg_angle': -20, 'right_leg_angle': 20}
+    ],
+    [  # Bear Swaying: Leg lift and drop
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 45, 'right_leg_angle': -45}
+    ],
+    [  # Crane Stretching: Arms out, chest protrude
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 90, 'right_arm_angle': 90, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -80, 'body_end_x': 0, 'body_end_y': -20, 'left_arm_angle': 135, 'right_arm_angle': 135, 'left_leg_angle': 0, 'right_leg_angle': 0}
+    ],
+    [  # Crane Flying: Arms raise and lower
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 0, 'right_arm_angle': 0, 'left_leg_angle': 0, 'right_leg_angle': 0},
+        {'head_x': 0, 'head_y': -100, 'body_end_x': 0, 'body_end_y': 0, 'left_arm_angle': 180, 'right_arm_angle': 180, 'left_leg_angle': 0, 'right_leg_angle': 0}
+    ]
+]
+
+# Human-like Shifu class (same as before)
+class Shifu:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.head_radius = 25
+        self.body_length = 60
+        self.arm_length = 40
+        self.leg_length = 50
+        self.keyframes = []
+        self.current_frame = 0
+        self.frame_count = 0
+        self.animation_speed = 60
+
+    def set_keyframes(self, keyframes):
+        self.keyframes = keyframes
+        self.current_frame = 0
+        self.frame_count = 0
+
+    def update(self):
+        if self.keyframes:
+            self.frame_count += 1
+            if self.frame_count >= self.animation_speed:
+                self.current_frame = (self.current_frame + 1) % len(self.keyframes)
+                self.frame_count = 0
+
+    def lerp(self, a, b, t):
+        return a + (b - a) * t
+
+    def draw(self, screen):
+        if not self.keyframes:
+            return
+        next_frame = (self.current_frame + 1) % len(self.keyframes)
+        t = self.frame_count / self.animation_speed
+        kf1 = self.keyframes[self.current_frame]
+        kf2 = self.keyframes[next_frame]
+
+        head_x = self.lerp(kf1['head_x'], kf2['head_x'], t) + self.x
+        head_y = self.lerp(kf1['head_y'], kf2['head_y'], t) + self.y
+        pygame.draw.circle(screen, SKIN, (int(head_x), int(head_y)), self.head_radius)
+        pygame.draw.circle(screen, BLACK, (int(head_x - 10), int(head_y - 5)), 3)
+        pygame.draw.circle(screen, BLACK, (int(head_x + 10), int(head_y - 5)), 3)
+        pygame.draw.polygon(screen, WHITE, [
+            (head_x, head_y + 10),
+            (head_x - 15, head_y + 30),
+            (head_x + 15, head_y + 30)
+        ])
+
+        body_end_x = self.lerp(kf1['body_end_x'], kf2['body_end_x'], t) + self.x
+        body_end_y = self.lerp(kf1['body_end_y'], kf2['body_end_y'], t) + self.y
+        pygame.draw.rect(screen, NAVY, (int(head_x - 20), int(head_y + self.head_radius), 40, self.body_length))
+        pygame.draw.polygon(screen, GRAY_ROBE, [
+            (head_x - 20, head_y + self.head_radius + self.body_length),
+            (head_x + 20, head_y + self.head_radius + self.body_length),
+            (head_x + 30, head_y + self.head_radius + self.body_length + 20),
+            (head_x - 30, head_y + self.head_radius + self.body_length + 20)
+        ])
+
+        left_arm_angle = self.lerp(kf1['left_arm_angle'], kf2['left_arm_angle'], t)
+        right_arm_angle = self.lerp(kf1['right_arm_angle'], kf2['right_arm_angle'], t)
+        left_arm_end_x = head_x - 10 + self.arm_length * math.sin(math.radians(left_arm_angle))  # Adjusted for shoulder
+        left_arm_end_y = head_y + self.head_radius - self.arm_length * math.cos(math.radians(left_arm_angle))
+        right_arm_end_x = head_x + 10 + self.arm_length * math.sin(math.radians(right_arm_angle))
+        right_arm_end_y = head_y + self.head_radius - self.arm_length * math.cos(math.radians(right_arm_angle))
+        pygame.draw.line(screen, NAVY, (int(head_x - 10), int(head_y + self.head_radius)), (int(left_arm_end_x), int(left_arm_end_y)), 12)
+        pygame.draw.line(screen, NAVY, (int(head_x + 10), int(head_y + self.head_radius)), (int(right_arm_end_x), int(right_arm_end_y)), 12)
+        pygame.draw.line(screen, SKIN, (int(left_arm_end_x - 5), int(left_arm_end_y)), (int(left_arm_end_x), int(left_arm_end_y)), 8)  # Hands
+        pygame.draw.line(screen, SKIN, (int(right_arm_end_x - 5), int(right_arm_end_y)), (int(right_arm_end_x), int(right_arm_end_y)), 8)
+
+        left_leg_angle = self.lerp(kf1['left_leg_angle'], kf2['left_leg_angle'], t)
+        right_leg_angle = self.lerp(kf1['right_leg_angle'], kf2['right_leg_angle'], t)
+        left_leg_end_x = body_end_x - 10 + self.leg_length * math.sin(math.radians(left_leg_angle))
+        left_leg_end_y = body_end_y + self.leg_length * math.cos(math.radians(left_leg_angle))
+        right_leg_end_x = body_end_x + 10 + self.leg_length * math.sin(math.radians(right_leg_angle))
+        right_leg_end_y = body_end_y + self.leg_length * math.cos(math.radians(right_leg_angle))
+        pygame.draw.line(screen, GRAY_ROBE, (int(body_end_x - 10), int(body_end_y)), (int(left_leg_end_x), int(left_leg_end_y)), 12)
+        pygame.draw.line(screen, GRAY_ROBE, (int(body_end_x + 10), int(body_end_y)), (int(right_leg_end_x), int(right_leg_end_y)), 12)
+
+# Save a sample pose as PNG (optional)
+def save_pose(shifu, filename="shifu_pose.png"):
+    if not imageio_available:
+        print("imageio not installed; cannot save pose. Install via Replit packages.")
+        return
+    temp_surface = pygame.Surface((200, 300), pygame.SRCALPHA)
+    temp_surface.fill((0, 0, 0, 0))  # Transparent
+    shifu.x, shifu.y = 100, 200  # Center
+    shifu.keyframes = tai_chi_keyframes[0]  # Preparation keyframes
+    shifu.current_frame = 0
+    shifu.frame_count = 0
+    shifu.draw(temp_surface)
+    pygame.image.save(temp_surface, filename)
+    print(f"Saved sample pose to {filename}")
+
+# Current state
+current_section = None
+current_form = None
+scroll_y = 0
+shifu = Shifu(SCREEN_WIDTH - 200, SCREEN_HEIGHT // 2 + 50)  # Adjusted y for better fit
+
+# Save sample at start if available
+save_pose(shifu)
+
+def draw_text(text, font, color, x, y):
+    lines = text.split('. ')  # Split for better readability
+    for i, line in enumerate(lines):
+        text_surface = font.render(line.strip() + ('.' if i < len(lines)-1 else ''), True, color)
+        screen.blit(text_surface, (x, y + i * 30))
+
+def draw_button(text, x, y, width, height, color):
+    pygame.draw.rect(screen, color, (x, y, width, height))
+    text_surface = font_button.render(text, True, BLACK)
+    screen.blit(text_surface, (x + 10, y + 10))
+
+def draw_form_list(items, section_keyframes):
+    global current_form, event  # event is global for click handling
+    y_offset = 100 + scroll_y
+    for i, item in enumerate(items):
+        button_y = y_offset + i * 60
+        if button_y + 50 < 100 or button_y > SCREEN_HEIGHT - 50: continue  # Skip off-screen
+        draw_button(item['name'], 50, button_y, 300, 50, BLUE if current_form == i else GRAY)
+        if 50 <= mx <= 350 and button_y <= my <= button_y + 50 and event.type == pygame.MOUSEBUTTONDOWN:
+            current_form = i
+            shifu.set_keyframes(section_keyframes[i])
+
+# Main loop
+clock = pygame.time.Clock()
+running = True
+while running:
+    screen.fill(WHITE)
+    mx, my = pygame.mouse.get_pos()
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if current_section is None:
+                if 100 <= mx <= 300 and 100 <= my <= 150:
+                    current_section = 'tai_chi'
+                    current_form = None
+                    scroll_y = 0
+                elif 100 <= mx <= 300 and 200 <= my <= 250:
+                    current_section = 'brocades'
+                    current_form = None
+                    scroll_y = 0
+                elif 100 <= mx <= 300 and 300 <= my <= 350:
+                    current_section = 'frolics'
+                    current_form = None
+                    scroll_y = 0
+        elif event.type == pygame.MOUSEWHEEL:
+            scroll_y += event.y * 30
+            scroll_y = min(0, max(scroll_y, -(len(tai_chi_forms if current_section == 'tai_chi' else eight_brocades if current_section == 'brocades' else animal_frolics) * 60 - SCREEN_HEIGHT + 200)))
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            if current_section:
+                current_section = None
+                current_form = None
+                scroll_y = 0
+
+    if current_section is None:
+        draw_text("Select a Section", font_title, BLUE, 100, 50)
+        draw_button("Tai Chi 21 Forms", 100, 100, 200, 50, GRAY)
+        draw_button("8 Brocades", 100, 200, 200, 50, GRAY)
+        draw_button("Animal Frolics", 100, 300, 200, 50, GRAY)
+    else:
+        title = "Tai Chi 21 Forms (Chen Style)" if current_section == 'tai_chi' else "8 Brocades Qigong" if current_section == 'brocades' else "Animal Frolics (Crane, Bear, Tiger, Deer)"
+        draw_text(title, font_title, BLUE, 50, 50)
+        items = tai_chi_forms if current_section == 'tai_chi' else eight_brocades if current_section == 'brocades' else animal_frolics
+        section_keyframes = tai_chi_keyframes if current_section == 'tai_chi' else eight_brocades_keyframes if current_section == 'brocades' else animal_frolics_keyframes
+        draw_form_list(items, section_keyframes)
+        if current_form is not None:
+            desc_y = 100
+            draw_text(items[current_form]['desc'], font_text, BLACK, 50, desc_y)
+
+    shifu.update()
+    shifu.draw(screen)
+    draw_text("Press ESC to go back | Scroll for more forms", font_text, BLACK, 50, SCREEN_HEIGHT - 30)
+
+    pygame.display.flip()
+    clock.tick(60)
+
+pygame.quit()
+sys.exit()
